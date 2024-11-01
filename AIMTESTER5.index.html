@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aim Test Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+        }
+
+        #game-area {
+            width: 800px;
+            height: 800px;
+            position: relative;
+            margin: 20px auto;
+            border: 2px solid white;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .target {
+            width: 100px;
+            height: 100px;
+            position: absolute;
+            border-radius: 50%;
+            transition: left 0.5s ease, top 0.5s ease, width 0.5s ease, height 0.5s ease;
+            animation: pop 0.3s ease-out;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .miss {
+            color: red;
+            font-size: 30px;
+            position: absolute;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.7s ease;
+        }
+
+        .counters {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Aim Test Game</h1>
+        <div id="game-area"></div>
+        <div class="counters">
+            <p>Successful Clicks: <span id="successCount">0</span></p>
+            <p>Failed Pressures: <span id="failCount">0</span></p>
+        </div>
+        <button id="restartBtn">Restart</button>
+    </div>
+    <audio id="successSound" src="success.mp3" preload="auto"></audio>
+    <audio id="failSound" src="fail.mp3" preload="auto"></audio>
+    <script>
+        let successCount = 0;
+        let failCount = 0;
+        let target;
+        let moveTimeout;
+        const gameArea = document.getElementById("game-area");
+        const successCountDisplay = document.getElementById("successCount");
+        const failCountDisplay = document.getElementById("failCount");
+        const restartBtn = document.getElementById("restartBtn");
+        const successSound = document.getElementById("successSound");
+        const failSound = document.getElementById("failSound");
+        let timeLimit = 2000; // Initial time limit for clicks
+
+        function createTarget() {
+            const colors = ['red', 'blue', 'green', 'orange', 'purple'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            target = document.createElement("div");
+            target.className = "target";
+            target.style.backgroundColor = randomColor;
+            moveTarget();
+            target.onclick = function(event) {
+                event.stopPropagation();
+                successCount++;
+                successCountDisplay.textContent = successCount;
+                successSound.play();
+                clearTimeout(moveTimeout);
+                moveTarget();
+            };
+
+            gameArea.appendChild(target);
+            resetMoveTimeout();
+        }
+
+        function resetMoveTimeout() {
+            clearTimeout(moveTimeout);
+            moveTimeout = setTimeout(() => {
+                failCount++;
+                failCountDisplay.textContent = failCount;
+                failSound.play();
+                moveTarget();
+            }, timeLimit);
+        }
+
+        gameArea.onclick = function(event) {
+            if (target) {
+                const targetRect = target.getBoundingClientRect();
+                const clickedOutside = (
+                    event.clientX < targetRect.left ||
+                    event.clientX > targetRect.right ||
+                    event.clientY < targetRect.top ||
+                    event.clientY > targetRect.bottom
+                );
+
+                if (clickedOutside) {
+                    showMissMark(event.clientX, event.clientY);
+                }
+            }
+        };
+
+        function showMissMark(x, y) {
+            const missMark = document.createElement("div");
+            missMark.className = "miss";
+            missMark.textContent = "❌";
+            missMark.style.left = `${x - 15}px`;
+            missMark.style.top = `${y - 15}px`;
+
+            gameArea.appendChild(missMark);
+
+            setTimeout(() => {
+                missMark.style.opacity = 0;
+                setTimeout(() => {
+                    missMark.remove();
+                }, 700);
+            }, 10);
+        }
+
+        function moveTarget() {
+            const size = 100;
+            const targetPosX = Math.random() * (gameArea.clientWidth - size);
+            const targetPosY = Math.random() * (gameArea.clientHeight - size);
+            target.style.left = `${targetPosX}px`;
+            target.style.top = `${targetPosY}px`;
+            resetMoveTimeout();
+
+            // Make game harder every 10 successful clicks
+            if (successCount % 10 === 0 && successCount > 0) {
+                timeLimit = Math.max(1000, timeLimit - 100); // Decrease time limit
+                const newSize = Math.max(70, 100 - Math.floor(successCount / 10) * 5);
+                target.style.width = `${newSize}px`;
+                target.style.height = `${newSize}px`; // Reduce target size
+            }
+        }
+
+        function startGame() {
+            successCount = 0;
+            failCount = 0;
+            timeLimit = 2000;
+            successCountDisplay.textContent = successCount;
+            failCountDisplay.textContent = failCount;
+
+            if (target) {
+                target.remove();
+            }
+
+            createTarget();
+        }
+
+        restartBtn.onclick = startGame;
+
+        startGame();
+    </script>
+</body>
+</html>
